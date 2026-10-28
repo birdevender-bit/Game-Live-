@@ -1,0 +1,214 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#6c35d5">
+  <title>Funny Selfie Camera 🤳</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px 16px;
+      font-family: system-ui, sans-serif;
+      color: #fff;
+      text-align: center;
+      background: linear-gradient(145deg, #24104f, #7735c9, #f05d9b);
+    }
+
+    main { max-width: 440px; margin: auto; }
+
+    h1 { font-size: 2rem; margin: 12px 0; }
+    p { line-height: 1.5; }
+
+    .notice {
+      background: rgba(255,255,255,.13);
+      border: 1px solid rgba(255,255,255,.3);
+      border-radius: 16px;
+      padding: 12px;
+      font-size: .9rem;
+    }
+
+    .camera {
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      margin: 20px auto;
+      background: #170d29;
+      border: 3px solid rgba(255,255,255,.65);
+      border-radius: 24px;
+      display: grid;
+      place-items: center;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+      display: none;
+    }
+
+    #placeholder { padding: 24px; }
+    #emoji {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      font-size: 48px;
+      pointer-events: none;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 20px;
+      font-size: 1rem;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    #start { background: #fff; color: #5123a4; }
+    #stop { background: #32154f; color: #fff; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+
+    #status { min-height: 48px; margin: 16px 0; }
+    .small { font-size: .82rem; opacity: .9; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>🤳 Funny Selfie Cam</h1>
+    <p>Ready to make your funniest face? 😂</p>
+
+    <div class="notice">
+      🔒 Your camera starts only after you tap Start Camera
+      and allow access in your browser. This page does not
+      take photos, record video, or upload your camera feed.
+    </div>
+
+    <section class="camera" aria-label="Selfie camera preview">
+      <div id="placeholder">
+        <div style="font-size:64px">📸</div>
+        <p>Your funny selfie will appear here!</p>
+        <p class="small">Tap Start Camera when you're ready.</p>
+      </div>
+      <video id="video" autoplay muted playsinline></video>
+      <div id="emoji" aria-hidden="true">😂</div>
+    </section>
+
+    <div class="buttons">
+      <button id="start" type="button">📷 Start Camera</button>
+      <button id="stop" type="button" disabled>⏹ Stop Camera</button>
+    </div>
+
+    <p id="status" role="status" aria-live="polite">
+      Camera is off.
+    </p>
+    <p class="small">
+      Tip: Use good lighting and make your silliest face! 🤪
+    </p>
+  </main>
+
+  <script>
+    const video = document.getElementById("video");
+    const startButton = document.getElementById("start");
+    const stopButton = document.getElementById("stop");
+    const statusText = document.getElementById("status");
+    const placeholder = document.getElementById("placeholder");
+    const emoji = document.getElementById("emoji");
+
+    let stream = null;
+
+    async function startCamera() {
+      if (stream) return;
+
+      if (!navigator.mediaDevices ||
+          !navigator.mediaDevices.getUserMedia) {
+        statusText.textContent =
+          "Camera unavailable. Open this page using HTTPS in Safari.";
+        return;
+      }
+
+      startButton.disabled = true;
+      statusText.textContent =
+        "Requesting camera permission… Please choose Allow.";
+
+      try {
+        // Runs only after the visitor taps Start Camera.
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "user" }
+          },
+          audio: false
+        });
+
+        video.srcObject = stream;
+        await video.play();
+
+        video.style.display = "block";
+        placeholder.style.display = "none";
+        startButton.disabled = true;
+        stopButton.disabled = false;
+        statusText.textContent =
+          "Camera is on! Make a funny face! 😂";
+      } catch (error) {
+        stream = null;
+        video.srcObject = null;
+        startButton.disabled = false;
+
+        if (error.name === "NotAllowedError") {
+          statusText.textContent =
+            "Camera permission was denied. Allow camera access in your browser settings to try again.";
+        } else if (error.name === "NotFoundError") {
+          statusText.textContent =
+            "No available camera was found on this device.";
+        } else {
+          statusText.textContent =
+            "Could not start the camera. Check permission and try again.";
+        }
+      }
+    }
+
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
+      stream = null;
+      video.pause();
+      video.srcObject = null;
+      video.style.display = "none";
+      placeholder.style.display = "block";
+
+      startButton.disabled = false;
+      stopButton.disabled = true;
+      statusText.textContent = "Camera is off.";
+    }
+
+    startButton.addEventListener("click", startCamera);
+    stopButton.addEventListener("click", stopCamera);
+
+    const emojis = ["😂", "🤪", "😎", "🥳", "🐵", "🤡"];
+    let emojiIndex = 0;
+
+    emoji.addEventListener("click", () => {
+      emojiIndex = (emojiIndex + 1) % emojis.length;
+      emoji.textContent = emojis[emojiIndex];
+    });
+
+    // Stop the camera if the page is closed or unloaded.
+    window.addEventListener("pagehide", stopCamera);
+  </script>
+</body>
+</html>
